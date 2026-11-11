@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: tilelang
-  version: "0.1.14"
+  version: "0.1.8"
   cuda_enabled: ${{ cuda_compiler_version != "None" }}
 
 package:
@@ -11,17 +11,18 @@ package:
 
 source:
   url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
-  sha256: 7ae0fba6c63dae80b3c9c5c11a70bb8d7165794994f290f36e2fe87bfb143cfc
+  sha256: da967821698eb7a79a76d27fbe25e314a3273f2b12ba4833e981658139d0e6d9
   patches:
     # Stop shipping the vendored CUTLASS headers (they are only used as a JIT
     # include path) and resolve them from the prefix instead, where the
-    # conda-forge `cutlass` package installs them.
+    # conda-forge `cutlass` package installs them. Also drop the ROCm-only
+    # Composable Kernel headers.
     - patches/0001-do-not-vendor-cutlass.patch
 
 build:
   number: 0
   # The only compiled Python extension is a Cython module built against the
-  # stable ABI (`wheel.py-api = "cp39"`), so build once per platform/CUDA variant.
+  # stable ABI (`wheel.py-api = "cp38"`), so build once per platform/CUDA variant.
   # Windows is not supported yet.
   skip:
     - win
@@ -31,16 +32,16 @@ build:
   script:
     env:
       CMAKE_GENERATOR: Ninja
-      # Otherwise the version gets a local label, e.g. `0.1.14+cu130.gitabcdef`.
+      # Otherwise the version gets a local label, e.g. `0.1.8+cu130.gitabcdef`.
       NO_VERSION_LABEL: "1"
       USE_CUDA: ${{ "ON" if cuda_enabled else "OFF" }}
       USE_ROCM: "OFF"
     content:
       # These are not needed for the build: CUTLASS comes from the `cutlass`
-      # package (see the patch above) and the HIP headers are only used by the
+      # package (see the patch above) and Composable Kernel is only used by the
       # ROCm backend, which is not enabled here. Removing them makes sure
       # neither gets picked up or packaged by accident.
-      - rm -rf 3rdparty/cutlass 3rdparty/hip-headers
+      - rm -rf 3rdparty/cutlass 3rdparty/composable_kernel
       # Upstream's FindZ3 only looks inside the PyPI `z3-solver` wheel layout
       # (NO_DEFAULT_PATH); point it at `libz3` from the prefix instead.
       - export CMAKE_ARGS="${CMAKE_ARGS} -DPython3_EXECUTABLE=${PYTHON} -DZ3_INCLUDE_DIR=${PREFIX}/include -DZ3_LIBRARY=${PREFIX}/lib/libz3${SHLIB_EXT}"
@@ -88,7 +89,8 @@ requirements:
         - cuda-nvrtc-dev
   run:
     - python >=${{ python_min }}
-    - apache-tvm-ffi >=0.1.11,<0.1.13
+    # There was a <0.2 pin upstream, but it seems too loose
+    - apache-tvm-ffi >=0.1.6,<0.1.11
     - torch-c-dlpack-ext
     - cloudpickle
     - ml_dtypes
