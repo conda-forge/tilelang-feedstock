@@ -1,0 +1,24 @@
+Subject: [PATCH] Do not override the CUDA compiler chosen by the toolchain
+
+`CMakeLists.txt` unconditionally sets `CMAKE_CUDA_COMPILER` to
+`${CUDAToolkit_BIN_DIR}/nvcc`. In conda-forge that is the bare nvcc under
+`$BUILD_PREFIX/targets/<arch>/bin`, not the `$BUILD_PREFIX/bin/nvcc` wrapper
+exported as `CUDACXX`, so the host-prefix include paths are missing and
+CMake's compiler check fails with `crt/host_config.h: No such file or directory`.
+Only fall back to the toolkit's nvcc when no compiler was specified.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -220,7 +220,11 @@
+ elseif(USE_CUDA)
+   set(CMAKE_CUDA_STANDARD 17)
+   find_package(CUDAToolkit REQUIRED)
+-  set(CMAKE_CUDA_COMPILER "${CUDAToolkit_BIN_DIR}/nvcc")
++  # Respect a compiler chosen by the user/toolchain (e.g. conda-forge's nvcc
++  # wrapper, exported as CUDACXX); only fall back to the toolkit's nvcc.
++  if(NOT CMAKE_CUDA_COMPILER AND NOT DEFINED ENV{CUDACXX})
++    set(CMAKE_CUDA_COMPILER "${CUDAToolkit_BIN_DIR}/nvcc")
++  endif()
+   add_compile_definitions("CUDA_MAJOR_VERSION=${CUDAToolkit_VERSION_MAJOR}")
+ 
+   # Set `USE_CUDA=/usr/local/cuda-x.y`

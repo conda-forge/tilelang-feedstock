@@ -18,6 +18,9 @@ source:
     # conda-forge `cutlass` package installs them. Also drop the ROCm-only
     # Composable Kernel headers.
     - patches/0001-do-not-vendor-cutlass.patch
+    # Use conda-forge's nvcc wrapper (CUDACXX) instead of the bare nvcc binary,
+    # which does not know about the host prefix's CUDA headers.
+    - patches/0002-respect-cudacxx.patch
 
 build:
   number: 0
