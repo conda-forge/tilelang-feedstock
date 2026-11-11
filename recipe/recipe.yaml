@@ -127,7 +127,6 @@ tests:
   - python:
       imports:
         - tilelang
-        - tilelang.cpu
         - tilelang.engine
         - tilelang.jit
         - tilelang.language
