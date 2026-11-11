@@ -99,7 +99,9 @@ requirements:
   run:
     - python >=${{ python_min }}
     # There was a <0.2 pin upstream, but it seems too loose
-    - apache-tvm-ffi >=0.1.6,<0.1.11
+    # tvm-ffi 0.1.10 gives every Object subclass `__slots__ = ()`, which breaks
+    # the vendored TVM's TVMDerivedObject (fixed upstream in later tilelang).
+    - apache-tvm-ffi >=0.1.6,<0.1.10
     - torch-c-dlpack-ext
     - cloudpickle
     - ml_dtypes
