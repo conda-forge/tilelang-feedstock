@@ -25,7 +25,7 @@ source:
 build:
   number: 0
   # The only compiled Python extension is a Cython module built against the
-  # stable ABI (`wheel.py-api = "cp38"`), so build once per platform/CUDA variant.
+  # stable ABI (`wheel.py-api`, overridden to cp39 below), so build once per platform/CUDA variant.
   # Windows is not supported yet.
   skip:
     - win
@@ -54,7 +54,8 @@ build:
           # not see the CUDA headers split across the build/host prefixes.
           - export CMAKE_ARGS="${CMAKE_ARGS} -DCMAKE_CUDA_COMPILER=${BUILD_PREFIX}/bin/nvcc"
       - export CMAKE_BUILD_PARALLEL_LEVEL=${CPU_COUNT}
-      - ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+      # Upstream targets the cp38 limited API, but Cython >=3.3 requires >=3.9.
+      - ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation -Cwheel.py-api=cp39
 
 requirements:
   build:
