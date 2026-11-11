@@ -11,7 +11,7 @@ import sys
 version, flavor = sys.argv[1], sys.argv[2]
 assert flavor in ("cpu", "cuda"), flavor
 
-# No local version label (e.g. `0.1.14+cu130.gitabcdef`) in the metadata.
+# No local version label (e.g. `0.1.8+cu130.gitabcdef`) in the metadata.
 dist_version = importlib.metadata.version("tilelang")
 assert dist_version == version, f"{dist_version!r} != {version!r}"
 
@@ -24,8 +24,10 @@ third_party = os.path.join(root, "3rdparty")
 entries = sorted(os.listdir(third_party))
 assert entries == ["tvm"], f"unexpected vendored components: {entries}"
 tvm_entries = sorted(os.listdir(os.path.join(third_party, "tvm")))
-expected_tvm = ["include", "python", "src", "version.py"]
+# `3rdparty/dmlc-core/include` is Apache-2.0 and covered by TVM's LICENSE.
+expected_tvm = ["3rdparty", "include", "python", "src", "version.py"]
 assert tvm_entries == expected_tvm, f"unexpected vendored TVM contents: {tvm_entries}"
+assert sorted(os.listdir(os.path.join(third_party, "tvm", "3rdparty"))) == ["dmlc-core"]
 
 # Native libraries: libtvm_ffi and libz3 must come from their own packages.
 libs = sorted(f for f in os.listdir(os.path.join(root, "lib")) if not f.startswith("."))
@@ -33,10 +35,10 @@ print("tilelang/lib:", libs)
 for unwanted in ("tvm_ffi", "z3"):
     assert not any(unwanted in f for f in libs), f"{unwanted} is bundled: {libs}"
 if sys.platform.startswith("linux"):
-    for lib in ("libtilelang.so", "libtvm_compiler.so", "libtvm_runtime.so"):
+    for lib in ("libtilelang.so", "libtvm.so"):
         assert lib in libs, f"{lib} missing: {libs}"
     if flavor == "cuda":
-        for lib in ("libstub_cuda.so", "libstub_cudart.so", "libstub_nvrtc.so"):
+        for lib in ("libcuda_stub.so", "libcudart_stub.so", "libnvrtc_stub.so"):
             assert lib in libs, f"{lib} missing: {libs}"
 
 import tilelang  # noqa: E402
@@ -46,8 +48,6 @@ print("tilelang", tilelang.__version__)
 assert tilelang.__version__ == version, tilelang.__version__
 
 if flavor == "cuda":
-    import tilelang.cuda  # noqa: F401
-
     # The JIT must find CUTLASS/CuTe in the prefix now that it is not vendored.
     inc = tilelang.env.CUTLASS_INCLUDE_DIR
     print("CUTLASS_INCLUDE_DIR:", inc)
