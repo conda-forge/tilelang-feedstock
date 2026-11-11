@@ -18,8 +18,8 @@ source:
     # conda-forge `cutlass` package installs them. Also drop the ROCm-only
     # Composable Kernel headers.
     - patches/0001-do-not-vendor-cutlass.patch
-    # Use conda-forge's nvcc wrapper (CUDACXX) instead of the bare nvcc binary,
-    # which does not know about the host prefix's CUDA headers.
+    # Let CMAKE_CUDA_COMPILER (set in the build script) choose nvcc instead of
+    # forcing the bare binary under `targets/<arch>/bin`.
     - patches/0002-respect-cudacxx.patch
 
 build:
@@ -48,6 +48,11 @@ build:
       # Upstream's FindZ3 only looks inside the PyPI `z3-solver` wheel layout
       # (NO_DEFAULT_PATH); point it at `libz3` from the prefix instead.
       - export CMAKE_ARGS="${CMAKE_ARGS} -DPython3_EXECUTABLE=${PYTHON} -DZ3_INCLUDE_DIR=${PREFIX}/include -DZ3_LIBRARY=${PREFIX}/lib/libz3${SHLIB_EXT}"
+      - if: cuda_enabled
+        then:
+          # Without this CMake picks the bare `targets/<arch>/bin/nvcc`, which does
+          # not see the CUDA headers split across the build/host prefixes.
+          - export CMAKE_ARGS="${CMAKE_ARGS} -DCMAKE_CUDA_COMPILER=${BUILD_PREFIX}/bin/nvcc"
       - export CMAKE_BUILD_PARALLEL_LEVEL=${CPU_COUNT}
       - ${{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
 
