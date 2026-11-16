@@ -1,10 +1,9 @@
-Subject: [PATCH] Do not vendor CUTLASS; use the headers from the environment
+Subject: [PATCH] Do not vendor CUTLASS or Composable Kernel
 
 tilelang ships the CUTLASS headers under `tilelang/3rdparty/cutlass` only so
-that the JIT can pass them to nvcc/NVRTC via `-I` (see
-`tilelang/cuda/backend.py`, `tilelang/contrib/nvcc.py` and
-`tilelang/jit/adapter/libgen.py`). Nothing in `CMakeLists.txt` compiles
-against CUTLASS, so it is a runtime-only include path.
+that the JIT can pass them to nvcc/NVRTC via `-I`. Nothing in
+`CMakeLists.txt` compiles against CUTLASS, so it is a runtime-only include
+path.
 
 Stop packaging that copy and let `TL_CUTLASS_PATH` resolve to an installed
 CUTLASS instead. Upstream already honours `TL_CUTLASS_PATH` when it is set;
@@ -13,23 +12,31 @@ anything. An installed CUTLASS puts `cutlass/`, `cute/` and (with
 `-DCUTLASS_ENABLE_TOOLS=ON`) `cutlass/util/` directly under
 `<prefix>/include`, which is what the JIT `-I` flags need.
 
+Composable Kernel is likewise only a JIT include path, and only for the ROCm
+backend, which is not built here. Do not ship it, and do not warn on every
+import that it is missing.
+
 --- a/pyproject.toml
 +++ b/pyproject.toml
-@@ -158,9 +158,8 @@
- "tilelang/3rdparty/tvm/python" = "3rdparty/tvm/python"
+@@ -130,12 +130,9 @@
  "tilelang/3rdparty/tvm/include" = "3rdparty/tvm/include"
+ "tilelang/3rdparty/tvm/3rdparty/dmlc-core/include" = "3rdparty/tvm/3rdparty/dmlc-core/include"
  "tilelang/3rdparty/tvm/version.py" = "3rdparty/tvm/version.py"
 -# CUTLASS
 -"tilelang/3rdparty/cutlass/include" = "3rdparty/cutlass/include"
 -"tilelang/3rdparty/cutlass/tools" = "3rdparty/cutlass/tools"
+-# Composable Kernel
+-"tilelang/3rdparty/composable_kernel/include" = "3rdparty/composable_kernel/include"
+-"tilelang/3rdparty/composable_kernel/library" = "3rdparty/composable_kernel/library"
 +# CUTLASS is not vendored here: the headers are taken from the environment
 +# (see tilelang/env.py) so that a single, shared copy can be used.
++# Composable Kernel is only used by the ROCm backend, which is not built.
  
  
  
 --- a/tilelang/env.py
 +++ b/tilelang/env.py
-@@ -631,6 +631,14 @@
+@@ -392,6 +392,14 @@
  # Initialize CUTLASS paths
  if os.environ.get("TL_CUTLASS_PATH", None) is None:
      cutlass_inc_path = os.path.join(THIRD_PARTY_ROOT, "cutlass", "include")
@@ -44,3 +51,13 @@ anything. An installed CUTLASS puts `cutlass/`, `cute/` and (with
      if os.path.exists(cutlass_inc_path):
          os.environ["TL_CUTLASS_PATH"] = env.CUTLASS_INCLUDE_DIR = cutlass_inc_path
      else:
+@@ -403,7 +411,8 @@
+     if os.path.exists(ck_inc_path):
+         os.environ["TL_COMPOSABLE_KERNEL_PATH"] = env.COMPOSABLE_KERNEL_INCLUDE_DIR = ck_inc_path
+     else:
+-        logger.warning(COMPOSABLE_KERNEL_NOT_FOUND_MESSAGE)
++        # Only needed by the ROCm backend, which this build does not include.
++        logger.debug(COMPOSABLE_KERNEL_NOT_FOUND_MESSAGE)
+ 
+ # Initialize TL_TEMPLATE_PATH
+ if os.environ.get("TL_TEMPLATE_PATH", None) is None:
