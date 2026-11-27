@@ -2,7 +2,7 @@ schema_version: 1
 
 context:
   name: tilelang
-  version: "0.1.14"
+  version: "0.1.16"
   cuda_enabled: ${{ cuda_compiler_version != "None" }}
 
 package:
@@ -11,7 +11,7 @@ package:
 
 source:
   url: https://pypi.org/packages/source/${{ name[0] }}/${{ name }}/${{ name }}-${{ version }}.tar.gz
-  sha256: 7ae0fba6c63dae80b3c9c5c11a70bb8d7165794994f290f36e2fe87bfb143cfc
+  sha256: d742f040d2bc310b94882cf08981225501acadd166fdccd0c86f308fdfcfbb71
   patches:
     # Stop shipping the vendored CUTLASS headers (they are only used as a JIT
     # include path) and resolve them from the prefix instead, where the
